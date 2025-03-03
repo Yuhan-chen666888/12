@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>Untitled</title>
+  
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMI試算表</title>
+    <style>
+        .calculator {
+            max-width: 300px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        input[type="number"], input[type="button"] {
+            width: 100%;
+            height: 40px;
+            margin: 5px 0;
+            font-size: 18px;
+        }
+        input[type="button"] {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+        input[type="button"]:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h2>BMI試算表</h2>
+        <label for="height">身高 (公分):</label>
+        <input type="number" id="height" placeholder="例如: 170">
+        <label for="weight">體重 (公斤):</label>
+        <input type="number" id="weight" placeholder="例如: 65">
+        <input type="button" value="計算BMI" onclick="calculateBMI()">
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function calculateBMI() {
+            let height = document.getElementById('height').value / 100; // 轉換為公尺
+            let weight = document.getElementById('weight').value;
+            if (height > 0 && weight > 0) {
+                let bmi = weight / (height * height);
+                document.getElementById('result').innerText = '您的BMI為: ' + bmi.toFixed(2);
+            } else {
+                document.getElementById('result').innerText = '請輸入有效的身高和體重';
+            }
+        }
+    </script>
+</body>
+</html>
+<!-- partial -->
+  
+</body>
+</html>
