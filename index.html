@@ -1,26 +1,18 @@
 <!DOCTYPE html>
-<html lang="en" >
-<head>
-  <meta charset="UTF-8">
-  <title>Untitled</title>
-  
-
-</head>
-<body>
-<!-- partial:index.partial.html -->
-<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BMI試算表</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- 引入 Chart.js -->
     <style>
-        .calculator {
-            max-width: 300px;
-            margin: 0 auto;
+        .container {
+            max-width: 400px;
+            margin: 20px auto;
             padding: 20px;
             border: 1px solid #ccc;
             border-radius: 5px;
+            text-align: center;
         }
         input[type="number"], input[type="button"] {
             width: 100%;
@@ -32,14 +24,42 @@
             background-color: #4CAF50;
             color: white;
             border: none;
+            cursor: pointer;
         }
         input[type="button"]:hover {
             background-color: #45a049;
         }
+        #result, #suggestion {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .history {
+            margin-top: 20px;
+            text-align: left;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        canvas {
+            max-width: 100%;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
-    <div class="calculator">
+
+    <div class="container">
         <h2>BMI試算表</h2>
         <label for="height">身高 (公分):</label>
         <input type="number" id="height" placeholder="例如: 170">
@@ -47,23 +67,155 @@
         <input type="number" id="weight" placeholder="例如: 65">
         <input type="button" value="計算BMI" onclick="calculateBMI()">
         <div id="result"></div>
+        <div id="suggestion"></div>
+
+        <!-- BMI 等級標準 -->
+        <h3>BMI 等級標準</h3>
+        <table>
+            <tr>
+                <th>BMI 範圍</th>
+                <th>狀態</th>
+            </tr>
+            <tr><td>小於 18.5</td><td style="color: blue;">過輕 🟡</td></tr>
+            <tr><td>18.5 - 23.9</td><td style="color: green;">正常 ✅</td></tr>
+            <tr><td>24 - 26.9</td><td style="color: orange;">過重 🟠</td></tr>
+            <tr><td>27 以上</td><td style="color: red;">肥胖 🔴</td></tr>
+        </table>
+
+        <!-- BMI 歷史紀錄 -->
+        <div class="history">
+            <h3>歷史紀錄</h3>
+            <table id="historyTable">
+                <tr>
+                    <th>身高 (cm)</th>
+                    <th>體重 (kg)</th>
+                    <th>BMI</th>
+                    <th>狀態</th>
+                </tr>
+            </table>
+        </div>
+
+        <!-- BMI 圖表 -->
+        <canvas id="bmiChart"></canvas>
     </div>
 
     <script>
+        let bmiHistory = [];
+        let chart = null;
+
         function calculateBMI() {
             let height = document.getElementById('height').value / 100; // 轉換為公尺
             let weight = document.getElementById('weight').value;
+            let result = document.getElementById('result');
+            let suggestion = document.getElementById('suggestion');
+
             if (height > 0 && weight > 0) {
                 let bmi = weight / (height * height);
-                document.getElementById('result').innerText = '您的BMI為: ' + bmi.toFixed(2);
+                let status = '';
+                let color = '';
+
+                if (bmi < 18.5) {
+                    status = '過輕 🟡';
+                    color = 'blue';
+                } else if (bmi < 24) {
+                    status = '正常 ✅';
+                    color = 'green';
+                } else if (bmi < 27) {
+                    status = '過重 🟠';
+                    color = 'orange';
+                } else {
+                    status = '肥胖 🔴';
+                    color = 'red';
+                }
+
+                result.innerText = `您的 BMI 為: ${bmi.toFixed(2)}，屬於 ${status}`;
+                result.style.color = color;
+
+                // 計算理想體重範圍
+                let minIdealWeight = (18.5 * (height * height)).toFixed(1);
+                let maxIdealWeight = (23.9 * (height * height)).toFixed(1);
+                
+                if (bmi < 18.5) {
+                    let gainWeight = (minIdealWeight - weight).toFixed(1);
+                    suggestion.innerText = `👉 建議增加至少 ${gainWeight} 公斤，以達到健康範圍 (${minIdealWeight} - ${maxIdealWeight} kg)`;
+                    suggestion.style.color = 'blue';
+                } else if (bmi >= 24) {
+                    let loseWeight = (weight - maxIdealWeight).toFixed(1);
+                    suggestion.innerText = `👉 建議減少至少 ${loseWeight} 公斤，以達到健康範圍 (${minIdealWeight} - ${maxIdealWeight} kg)`;
+                    suggestion.style.color = 'red';
+                } else {
+                    suggestion.innerText = `👍 您的體重已在健康範圍內 (${minIdealWeight} - ${maxIdealWeight} kg)`;
+                    suggestion.style.color = 'green';
+                }
+
+                // 新增到歷史紀錄
+                bmiHistory.push({ height: height * 100, weight, bmi: bmi.toFixed(2), status });
+                updateHistoryTable();
+                updateChart();
             } else {
-                document.getElementById('result').innerText = '請輸入有效的身高和體重';
+                result.innerText = '請輸入有效的身高和體重';
+                result.style.color = 'black';
+                suggestion.innerText = '';
             }
         }
+
+        function updateHistoryTable() {
+            let historyTable = document.getElementById('historyTable');
+            historyTable.innerHTML = `
+                <tr>
+                    <th>身高 (cm)</th>
+                    <th>體重 (kg)</th>
+                    <th>BMI</th>
+                    <th>狀態</th>
+                </tr>`;
+
+            bmiHistory.forEach(entry => {
+                let row = `<tr>
+                    <td>${entry.height}</td>
+                    <td>${entry.weight}</td>
+                    <td>${entry.bmi}</td>
+                    <td>${entry.status}</td>
+                </tr>`;
+                historyTable.innerHTML += row;
+            });
+        }
+
+        function updateChart() {
+            let ctx = document.getElementById('bmiChart').getContext('2d');
+            let labels = bmiHistory.map((_, index) => `記錄 ${index + 1}`);
+            let data = bmiHistory.map(entry => entry.bmi);
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'BMI 變化趨勢',
+                        data: data,
+                        borderColor: 'blue',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            suggestedMin: 10,
+                            suggestedMax: 40
+                        }
+                    }
+                }
+            });
+        }
     </script>
+
 </body>
 </html>
-<!-- partial -->
-  
-</body>
-</html>
+
